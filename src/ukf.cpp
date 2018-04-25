@@ -44,11 +44,13 @@ UKF::UKF() {
   // initial covariance matrix
   P_ = MatrixXd(n_x_, n_x_);
 
+  // This link helps in making a guess about the noise parameters.  
+  // https://discussions.udacity.com/t/how-to-make-an-educated-guess-of-process-noise-parameters/351920/2
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 30;
+  std_a_ = 3;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 30;
+  std_yawdd_ = 0.2;
   
   //DO NOT MODIFY measurement noise values below these are provided by the sensor manufacturer.
   // Laser measurement noise standard deviation position1 in m
@@ -99,12 +101,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   Complete this function! Make sure you switch between lidar and radar
   measurements.
   */
-  // create files to store NIS values
-  std::ofstream NISRadarFile;
-  std::ofstream NISLidarFile;
   if (!is_initialized_) {
-    NISRadarFile.open("radar.txt", std::ios_base::app);
-    NISLidarFile.open("lidar.txt", std::ios_base::app);
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       /**
       Convert radar from polar to cartesian coordinates and initialize state.
@@ -157,13 +154,11 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
     // cout << "Updating lidar..." << endl;
     UpdateLidar(meas_package);
-    cout << NIS_lidar_ << endl;
-    NISLidarFile << NIS_lidar_;
+    // cout << NIS_lidar_ << endl;
   } else if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
     // cout << "Updating radar..." << endl;
     UpdateRadar(meas_package);
-    cout << NIS_radar_ << endl;
-    NISRadarFile << NIS_radar_;
+    // cout << NIS_radar_ << endl;
   }
 }
 

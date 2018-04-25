@@ -38,6 +38,16 @@ int main()
   vector<VectorXd> estimations;
   vector<VectorXd> ground_truth;
 
+  // Files storing the NIS values calculated in UKF
+  // The link below helped in making this work, otherwise
+  // only empty file was created at the end
+  // https://discussions.udacity.com/t/unscented-kalman-filter/295224/4
+  // ofstream NIS_radar_file;
+  // ofstream NIS_lidar_file;
+
+  // NIS_radar_file.open("NISRadar.txt", ofstream::out);
+  // NIS_lidar_file.open("NISLidar.txt", ofstream::out);
+
   h.onMessage([&ukf,&tools,&estimations,&ground_truth](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -53,84 +63,93 @@ int main()
 
         std::string event = j[0].get<std::string>();
         
-        if (event == "telemetry") {
+        if (event == "telemetry") 
+        {
           // j[1] is the data JSON object
           
           string sensor_measurment = j[1]["sensor_measurement"];
           
           MeasurementPackage meas_package;
           istringstream iss(sensor_measurment);
-    	  long long timestamp;
+    	    long long timestamp;
 
-    	  // reads first element from the current line
-    	  string sensor_type;
-    	  iss >> sensor_type;
+          // reads first element from the current line
+          string sensor_type;
+          iss >> sensor_type;
 
-    	  if (sensor_type.compare("L") == 0) {
-      	  		meas_package.sensor_type_ = MeasurementPackage::LASER;
-          		meas_package.raw_measurements_ = VectorXd(2);
-          		float px;
-      	  		float py;
-          		iss >> px;
-          		iss >> py;
-          		meas_package.raw_measurements_ << px, py;
-          		iss >> timestamp;
-          		meas_package.timestamp_ = timestamp;
+          if (sensor_type.compare("L") == 0) {
+            meas_package.sensor_type_ = MeasurementPackage::LASER;
+            meas_package.raw_measurements_ = VectorXd(2);
+            float px;
+            float py;
+            iss >> px;
+            iss >> py;
+            meas_package.raw_measurements_ << px, py;
+            iss >> timestamp;
+            meas_package.timestamp_ = timestamp;
           } else if (sensor_type.compare("R") == 0) {
-
-      	  		meas_package.sensor_type_ = MeasurementPackage::RADAR;
-          		meas_package.raw_measurements_ = VectorXd(3);
-          		float ro;
-      	  		float theta;
-      	  		float ro_dot;
-          		iss >> ro;
-          		iss >> theta;
-          		iss >> ro_dot;
-          		meas_package.raw_measurements_ << ro,theta, ro_dot;
-          		iss >> timestamp;
-          		meas_package.timestamp_ = timestamp;
+            meas_package.sensor_type_ = MeasurementPackage::RADAR;
+            meas_package.raw_measurements_ = VectorXd(3);
+            float ro;
+            float theta;
+            float ro_dot;
+            iss >> ro;
+            iss >> theta;
+            iss >> ro_dot;
+            meas_package.raw_measurements_ << ro,theta, ro_dot;
+            iss >> timestamp;
+            meas_package.timestamp_ = timestamp;
           }
           float x_gt;
-    	  float y_gt;
-    	  float vx_gt;
-    	  float vy_gt;
-    	  iss >> x_gt;
-    	  iss >> y_gt;
-    	  iss >> vx_gt;
-    	  iss >> vy_gt;
-    	  VectorXd gt_values(4);
-    	  gt_values(0) = x_gt;
-    	  gt_values(1) = y_gt; 
-    	  gt_values(2) = vx_gt;
-    	  gt_values(3) = vy_gt;
-    	  ground_truth.push_back(gt_values);
+          float y_gt;
+          float vx_gt;
+          float vy_gt;
+          iss >> x_gt;
+          iss >> y_gt;
+          iss >> vx_gt;
+          iss >> vy_gt;
+          VectorXd gt_values(4);
+          gt_values(0) = x_gt;
+          gt_values(1) = y_gt; 
+          gt_values(2) = vx_gt;
+          gt_values(3) = vy_gt;
+          ground_truth.push_back(gt_values);
           
-        //Call ProcessMeasurment(meas_package) for Kalman filter
-        // cout << "Processing measurement" << endl;
-    	  ukf.ProcessMeasurement(meas_package);
-        // cout << "Done processing measurement" << endl;
+          //Call ProcessMeasurment(meas_package) for Kalman filter
+          // cout << "Processing measurement" << endl;
+          ukf.ProcessMeasurement(meas_package);
+          // cout << "Done processing measurement" << endl;
 
-    	  //Push the current estimated x,y positon from the Kalman filter's state vector
+    	    //Push the current estimated x,y positon from the Kalman filter's state vector
 
-    	  VectorXd estimate(4);
+          VectorXd estimate(4);
 
-    	  double p_x = ukf.x_(0);
-    	  double p_y = ukf.x_(1);
-    	  double v  = ukf.x_(2);
-    	  double yaw = ukf.x_(3);
+          double p_x = ukf.x_(0);
+          double p_y = ukf.x_(1);
+          double v  = ukf.x_(2);
+          double yaw = ukf.x_(3);
 
-    	  double v1 = cos(yaw)*v;
-    	  double v2 = sin(yaw)*v;
+          double v1 = cos(yaw)*v;
+          double v2 = sin(yaw)*v;
 
-    	  estimate(0) = p_x;
-    	  estimate(1) = p_y;
-    	  estimate(2) = v1;
-    	  estimate(3) = v2;
-    	  
-    	  estimations.push_back(estimate);
-        // cout << "Calculating RMSE" << endl;
-    	  VectorXd RMSE = tools.CalculateRMSE(estimations, ground_truth);
-        // cout << "Done Calculating RMSE" << endl;
+          estimate(0) = p_x;
+          estimate(1) = p_y;
+          estimate(2) = v1;
+          estimate(3) = v2;
+          
+          estimations.push_back(estimate);
+          // cout << "Calculating RMSE" << endl;
+          VectorXd RMSE = tools.CalculateRMSE(estimations, ground_truth);
+          // cout << "Done Calculating RMSE" << endl;
+          // Write the NIS values to corresponding files
+          cout.precision(6);
+          // if (sensor_type.compare("L") == 0) {
+          //   // nis = ukf.NIS_lidar_;
+          //   NIS_lidar_file << fixed << ukf.NIS_lidar_ << endl;
+          // } else if (sensor_type.compare("R") == 0) {
+          //   NIS_radar_file << fixed << ukf.NIS_radar_ << endl;
+          // }
+
           json msgJson;
           msgJson["estimate_x"] = p_x;
           msgJson["estimate_y"] = p_y;
@@ -141,7 +160,6 @@ int main()
           auto msg = "42[\"estimate_marker\"," + msgJson.dump() + "]";
           // std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-	  
         }
       } else {
         
@@ -149,7 +167,6 @@ int main()
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
       }
     }
-
   });
 
   // We don't need this since we're not using HTTP but if it's removed the program
@@ -187,6 +204,12 @@ int main()
     return -1;
   }
   h.run();
+  // if (NIS_lidar_file.is_open()) {
+  //   NIS_lidar_file.close();
+  // }
+  // if (NIS_radar_file.is_open()) {
+  //   NIS_radar_file.close();
+  // }
 }
 
 
